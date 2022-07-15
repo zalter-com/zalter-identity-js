@@ -1,0 +1,10 @@
+# Production
+node_modules
+package-lock.json
+lib-cjs
+lib-esm
+
+# Misc
+.idea
+.DS_Store
+temp
