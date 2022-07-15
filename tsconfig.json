@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "noImplicitAny": false,
+    "module": "nodenext",
+    "moduleResolution": "Node",
+    "target": "es2017",
+    "sourceMap": false,
+    "rootDir": "src",
+    "lib": [
+      "dom",
+      "ESNext"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
