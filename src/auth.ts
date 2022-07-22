@@ -36,7 +36,7 @@ type CodeFlow = 'start' | 'finalize';
 type LinkFlow = 'start' | 'finalize';
 
 interface CodeStartParams {
-  email?: string;
+  email: string;
 }
 
 interface CodeFinalizeParams {
@@ -44,12 +44,12 @@ interface CodeFinalizeParams {
 }
 
 interface LinkStartParams {
-  email?: string;
-  confirmUrl?: string;
+  email: string;
+  redirectUri: string;
 }
 
 interface LinkFinalizeParams {
-  token?: string;
+  token: string;
 }
 
 interface AuthConfig {
@@ -456,7 +456,7 @@ export class Auth {
    * @private
    */
   async #signInLinkStart(params: LinkStartParams): Promise<void> {
-    const { email, confirmUrl } = params;
+    const { email, redirectUri } = params;
 
     const response = await this.#apiClient.request({
       path: Endpoint.START_LINK_SING_IN,
@@ -467,7 +467,7 @@ export class Auth {
       body: CBOR.encode({
         projectId: this.#projectId,
         email,
-        confirmUrl
+        redirectUri
       })
     });
 
