@@ -1,6 +1,6 @@
 {
   "name": "@zalter/identity-js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Zalter",
   "private": false,
   "description": "A browser API client for Zalter Identity service",
