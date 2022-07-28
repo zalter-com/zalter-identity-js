@@ -252,6 +252,9 @@ export class Auth {
   async #signInCodeStart(params: CodeStartParams): Promise<void> {
     const { email } = params;
 
+    // Generate subject DH key pair
+    const subDhKeyPair = X25519.generateKeyPair();
+
     return this.#apiClient
       .request({
         path: Endpoint.START_CODE_SIGN_IN,
@@ -261,7 +264,8 @@ export class Auth {
         },
         body: CBOR.encode({
           projectId: this.#projectId,
-          email
+          email,
+          dhPubKey: subDhKeyPair.publicKey
         })
       })
       .then(async (response) => {
@@ -271,14 +275,15 @@ export class Auth {
 
         const payload = CBOR.decode(new Uint8Array(await response.arrayBuffer())) as {
           sessionId: string;
-          kex: {
-            issDHPubKey: Uint8Array;
-          };
+          dhPubKey: Uint8Array;
         };
+
+        // Compute base DH key
+        const dhKey = X25519.sharedKey(subDhKeyPair.secretKey, payload.dhPubKey, true);
 
         this.#context = {
           sessionId: payload.sessionId,
-          issDHPubKey: payload.kex.issDHPubKey
+          dhKey
         };
       });
   }
@@ -292,31 +297,25 @@ export class Auth {
   async #signInCodeContinue(params: CodeFinalizeParams): Promise<void> {
     const { code } = params;
 
-    if (!this.#context?.issDHPubKey) {
+    if (!this.#context?.dhKey) {
       throw new Error('Must initiate authentication');
     }
 
     const rawCode = new Uint8Array(Buffer.from(code));
 
-    // Generate subject DH key pair
-    const subDHKeyPair = X25519.generateKeyPair();
-
-    // Compute base DH key
-    const dhKey = X25519.sharedKey(subDHKeyPair.secretKey, this.#context.issDHPubKey, true);
-
     // Derive DH key
-    const derivedDHKey = scrypt.deriveKey(rawCode, dhKey, 32);
+    const derivedDhKey = scrypt.deriveKey(rawCode, this.#context.dhKey, 32);
 
     // Generate subject signing key pair and challenge
     const subSigKeyPair = Ed25519.generateKeyPair();
     const subChallenge = Random.uint8Array(64);
 
     // Compute kex data
-    const kexData = concatUint8Arrays(subSigKeyPair.publicKey, subChallenge);
+    const data = concatUint8Arrays(subSigKeyPair.publicKey, subChallenge);
 
     // Encrypt kex data
-    const kexNonce = Random.uint8Array(24);
-    XSalsa20.streamXOR(derivedDHKey, kexNonce, kexData, kexData);
+    const nonce = Random.uint8Array(24);
+    XSalsa20.streamXOR(derivedDhKey, nonce, data, data);
 
     return this.#apiClient
       .request({
@@ -327,11 +326,8 @@ export class Auth {
         },
         body: CBOR.encode({
           sessionId: this.#context.sessionId,
-          kex: {
-            subDHPubKey: subDHKeyPair.publicKey,
-            nonce: kexNonce,
-            data: kexData
-          }
+          nonce,
+          data
         })
       })
       .then(async (response) => {
@@ -340,30 +336,26 @@ export class Auth {
         }
 
         const payload = CBOR.decode(new Uint8Array(await response.arrayBuffer())) as {
-          kex: {
-            nonce: Uint8Array;
-            data: Uint8Array;
-          };
+          nonce: Uint8Array;
+          data: Uint8Array;
         };
 
         // Derive DH key
-        const derivedDHKey = scrypt.deriveKey(subChallenge, dhKey, 32);
-
-        // Decode kex values
-        const kexData = new Uint8Array(payload.kex.data.length);
+        const derivedDhKey = scrypt.deriveKey(subChallenge, this.#context.dhKey, 32);
 
         // Decrypt kex data
-        XSalsa20.streamXOR(derivedDHKey, payload.kex.nonce, payload.kex.data, kexData);
+        const data = new Uint8Array(payload.data.length);
+        XSalsa20.streamXOR(derivedDhKey, payload.nonce, payload.data, data);
 
-        if (kexData.length !== 160) {
-          logger.error('Invalid ked length');
+        if (data.length !== 160) {
+          logger.error('Invalid data length');
           throw new Error('Something went wrong');
         }
 
         // Unwrap kex data
-        const issSigPubKey = kexData.slice(0, 32);
-        const issChallenge = kexData.slice(32, 96);
-        const issProof = kexData.slice(96, 160);
+        const issSigPubKey = data.slice(0, 32);
+        const issChallenge = data.slice(32, 96);
+        const issProof = data.slice(96, 160);
 
         // Verify issuer proof
         const isProofValid = Ed25519.verify(issSigPubKey, subChallenge, issProof);
@@ -376,7 +368,6 @@ export class Auth {
         this.#context.issChallenge = issChallenge;
         this.#context.issSigPubKey = issSigPubKey;
         this.#context.subSigPrivKey = subSigKeyPair.secretKey;
-        this.#context.dhKey = dhKey;
 
         return this.#signInCodeFinalize();
       });
@@ -389,14 +380,14 @@ export class Auth {
    */
   async #signInCodeFinalize(): Promise<void> {
     // Derive DH key
-    const derivedDHKey = scrypt.deriveKey(this.#context.issChallenge, this.#context.dhKey, 32);
+    const derivedDhKey = scrypt.deriveKey(this.#context.issChallenge, this.#context.dhKey, 32);
 
     // Compute kex data
-    const kexData = Ed25519.sign(this.#context.subSigPrivKey, this.#context.issChallenge);
+    const data = Ed25519.sign(this.#context.subSigPrivKey, this.#context.issChallenge);
 
     // Encrypt kex data
-    const kexNonce = Random.uint8Array(24);
-    XSalsa20.streamXOR(derivedDHKey, kexNonce, kexData, kexData);
+    const nonce = Random.uint8Array(24);
+    XSalsa20.streamXOR(derivedDhKey, nonce, data, data);
 
     return this.#apiClient
       .request({
@@ -407,10 +398,8 @@ export class Auth {
         },
         body: CBOR.encode({
           sessionId: this.#context.sessionId,
-          kex: {
-            nonce: kexNonce,
-            data: kexData
-          }
+          nonce,
+          data
         })
       })
       .then(async (response) => {
@@ -496,10 +485,10 @@ export class Auth {
     }
 
     // Generate subject DH key pair
-    const subDHKeyPair = X25519.generateKeyPair();
+    const subDhKeyPair = X25519.generateKeyPair();
 
     // Compute DH key
-    const dhKey = X25519.sharedKey(subDHKeyPair.secretKey, token.issDHPubKey, true);
+    const dhKey = X25519.sharedKey(subDhKeyPair.secretKey, token.dhPubKey, true);
 
     const xChaCha20Poly1305 = new XChaCha20Poly1305(dhKey);
 
@@ -508,11 +497,11 @@ export class Auth {
     const subProof = Ed25519.sign(subSigKeyPair.secretKey, token.challenge);
 
     // Compute kex data
-    let kexData = concatUint8Arrays(subSigKeyPair.publicKey, subProof);
+    let data = concatUint8Arrays(subSigKeyPair.publicKey, subProof);
 
     // Encrypt kex data
-    const kexNonce = Random.uint8Array(24);
-    kexData = xChaCha20Poly1305.seal(kexNonce, kexData);
+    const nonce = Random.uint8Array(24);
+    data = xChaCha20Poly1305.seal(nonce, data);
 
     return this.#apiClient
       .request({
@@ -523,11 +512,9 @@ export class Auth {
         },
         body: CBOR.encode({
           sessionId: token.sessionId,
-          kex: {
-            subDHPubKey: subDHKeyPair.publicKey,
-            nonce: kexNonce,
-            data: kexData
-          }
+          dhPubKey: subDhKeyPair.publicKey,
+          nonce,
+          data
         })
       })
       .then(async (response) => {
