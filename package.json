@@ -1,12 +1,13 @@
 {
   "name": "@zalter/identity-js",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Zalter",
   "private": false,
   "description": "A browser API client for Zalter Identity service",
   "scripts": {
     "clean": "rimraf lib-cjs lib-esm",
-    "build": "npm run clean && rollup --config rollup.config.js"
+    "build": "npm run clean && rollup --config rollup.config.js",
+    "prepack": "npm run build"
   },
   "repository": {
     "url": "https://github.com/zalter-com/zalter-identity-js.git"
@@ -31,7 +32,7 @@
       "require": "./lib-cjs/index.js"
     }
   },
-  "types": "./lib-esm/index.d.ts",
+  "types" : "./lib-esm/index.d.ts",
   "main": "./lib-cjs/index.js",
   "module": "./lib-esm/index.mjs",
   "files": [
@@ -42,20 +43,21 @@
     "package.json"
   ],
   "dependencies": {
-    "@stablelib/cbor": "^1.0.1",
-    "@stablelib/ed25519": "^1.0.2",
-    "@stablelib/scrypt": "^1.0.1",
-    "@stablelib/x25519": "^1.0.2",
-    "@stablelib/xchacha20poly1305": "^1.0.1",
-    "@stablelib/xsalsa20": "^1.0.2",
-    "buffer": "^6.0.3"
+    "@stablelib/cbor": "1.0.1",
+    "@stablelib/ed25519": "1.0.2",
+    "@stablelib/scrypt": "1.0.1",
+    "@stablelib/x25519": "1.0.2",
+    "@stablelib/xchacha20poly1305": "1.0.1",
+    "@stablelib/xsalsa20": "1.0.2",
+    "base64url": "3.0.1",
+    "buffer": "6.0.3"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^22.0.1",
-    "@rollup/plugin-node-resolve": "^13.3.0",
-    "@rollup/plugin-typescript": "^8.3.3",
-    "rimraf": "^3.0.2",
-    "rollup": "^2.76.0",
-    "tslib": "^2.4.0"
+    "@rollup/plugin-commonjs": "22.0.2",
+    "@rollup/plugin-node-resolve": "14.0.0",
+    "@rollup/plugin-typescript": "8.5.0",
+    "rimraf": "3.0.2",
+    "rollup": "2.79.0",
+    "tslib": "2.4.0"
   }
 }
