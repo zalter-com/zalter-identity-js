@@ -3,4 +3,4 @@ export const BASE_ENDPOINT: any = {
   scheme: 'https'
 };
 
-export const API_VERSION = '2022-06-01';
+export const API_VERSION = '2022-09-01';

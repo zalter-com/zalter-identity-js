@@ -1,5 +1,5 @@
 import * as CBOR from '@stablelib/cbor';
-import { ContentType, HttpHeader } from './http';
+import { ContentType, HttpHeader } from './http.mjs';
 
 export class ServiceException extends Error {
   /**

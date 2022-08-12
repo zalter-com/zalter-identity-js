@@ -1,12 +1,12 @@
 import * as CBOR from '@stablelib/cbor';
-import { Buffer } from 'buffer';
-import { Auth } from './auth';
-import { API_VERSION } from './constants';
-import { HttpHeader, HttpStatus } from './http';
-import { Logger } from './logger';
-import { TimeDrifter } from './time-drifter';
-import { User } from './user';
-import { concatUint8Arrays } from './utils/concat-uint8arrays';
+import { default as Base64Url } from 'base64url';
+import { Auth } from './auth.mjs';
+import { API_VERSION } from './constants.mjs';
+import { HttpHeader, HttpStatus } from './http.mjs';
+import { Logger } from './logger.mjs';
+import { TimeDrifter } from './time-drifter.mjs';
+import { User } from './user.mjs';
+import { concatUint8Arrays } from './utils/concat-uint8arrays.mjs';
 
 if (!globalThis.fetch) {
   throw new Error('No global fetch implementation found.');
@@ -260,7 +260,9 @@ export class ApiClient {
       sig
     };
 
-    request.headers[HttpHeader.X_ZALTER_SIGNATURE] = Buffer.from(CBOR.encode(signature)).toString('base64');
+    request.headers[HttpHeader.X_ZALTER_SIGNATURE] = Base64Url.fromBase64(
+      Buffer.from(CBOR.encode(signature)).toString('base64')
+    );
   }
 
   /**
@@ -282,7 +284,7 @@ export class ApiClient {
     let signature;
 
     try {
-      signature = CBOR.decode(Buffer.from(signatureHeader, 'base64'));
+      signature = CBOR.decode(Buffer.from(Base64Url.toBase64(signatureHeader), 'base64'));
     } catch {
       logger.error('Invalid signature header');
       return false;

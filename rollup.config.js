@@ -9,11 +9,12 @@ const external = [
   '@stablelib/x25519',
   '@stablelib/xchacha20poly1305',
   '@stablelib/xsalsa20',
-  'buffer'
+  'buffer',
+  'base64url'
 ];
 
 const cjsConfig = {
-  input: 'src/index.ts',
+  input: 'src/index.mts',
   output: {
     file: 'lib-cjs/index.js',
     format: 'cjs'
@@ -36,7 +37,7 @@ const cjsConfig = {
 };
 
 const esmConfig = {
-  input: 'src/index.ts',
+  input: 'src/index.mts',
   output: {
     file: 'lib-esm/index.mjs',
     format: 'esm'
