@@ -1,6 +1,6 @@
 {
   "name": "@zalter/identity-js",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Zalter",
   "private": false,
   "description": "A browser API client for Zalter Identity service",
@@ -27,12 +27,12 @@
   ],
   "exports": {
     ".": {
-      "types": "./lib-esm/index.d.ts",
+      "types": "./lib-esm/index.d.mts",
       "import": "./lib-esm/index.mjs",
       "require": "./lib-cjs/index.js"
     }
   },
-  "types" : "./lib-esm/index.d.ts",
+  "types" : "./lib-esm/index.d.mts",
   "main": "./lib-cjs/index.js",
   "module": "./lib-esm/index.mjs",
   "files": [
